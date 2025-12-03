@@ -142,7 +142,8 @@ class ManageTipsFrame(ctk.CTkFrame):
         self._make_sort_header("Incident Type", 1, "incident_type")
         self._make_sort_header("Location", 2, "location")
         self._make_sort_header("Urgency", 3, "urgency")
-        self._make_sort_header("STATUS", 4, "status")
+        # Add status header with a refresh button next to it
+        self._make_sort_header("STATUS", 4, "status", add_refresh=True)
 
         # Non-sortable "Edit" header spacer
         ctk.CTkLabel(
@@ -202,9 +203,17 @@ class ManageTipsFrame(ctk.CTkFrame):
         self.render_rows()
 
     # ---------- Header helpers ----------
-    def _make_sort_header(self, title: str, column_index: int, sort_key: str):
+    def _make_sort_header(self, title: str, column_index: int, sort_key: str, add_refresh: bool = False):
+        """
+        Create a sort header in header_frame. If add_refresh is True, place a
+        small refresh button to the right of the sort button (keeps UI intact).
+        """
+        # Place a container into the header cell so we can put both the sort button and a refresh button.
+        container = ctk.CTkFrame(self.header_frame, fg_color="transparent")
+        container.grid(row=0, column=column_index, sticky="nsew", padx=self.CELL_PADX, pady=self.CELL_PADY)
+
         btn = ctk.CTkButton(
-            self.header_frame,
+            container,
             text=f"{title} [▼]",
             font=("Helvetica", 15, "bold"),
             fg_color="transparent",
@@ -214,7 +223,25 @@ class ManageTipsFrame(ctk.CTkFrame):
             width=10,
             command=lambda k=sort_key: self._toggle_sort(k)
         )
-        btn.grid(row=0, column=column_index, sticky="nsew", padx=self.CELL_PADX, pady=self.CELL_PADY)
+        # Pack the sort button left so refresh can sit to the right
+        btn.pack(side="left", fill="x", expand=True)
+
+        if add_refresh:
+            # Small refresh button to the right of the status header
+            refresh_btn = ctk.CTkButton(
+                container,
+                text="⟳",
+                width=36,
+                height=28,
+                fg_color="transparent",
+                hover_color="#2a2a2a",
+                text_color=self.COLORS["header_text"],
+                font=("Helvetica", 12, "bold"),
+                corner_radius=4,
+                command=self._on_refresh_clicked
+            )
+            refresh_btn.pack(side="right", padx=(8, 0))
+
         self._header_buttons[sort_key] = (btn, title)
         return btn
 
@@ -349,3 +376,15 @@ class ManageTipsFrame(ctk.CTkFrame):
     def logout(self):
         self.app.current_user = None
         self.app.show_frame("LoginFrame")
+
+    # ---------- Refresh handler ----------
+    def _on_refresh_clicked(self):
+        """
+        Called when user clicks the small refresh control next to STATUS.
+        Refreshes rows from the database and re-renders the table.
+        """
+        # Optionally disable the button briefly or show a busy cursor if desired.
+        try:
+            self.render_rows()
+        except Exception as ex:
+            messagebox.showerror("Error", f"Failed to refresh incidents: {ex}")
