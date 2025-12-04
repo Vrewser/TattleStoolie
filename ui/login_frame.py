@@ -4,6 +4,11 @@ from PIL import Image, ImageTk
 
 from models.user import Admin, Reporter, Viewer
 
+# Module: login_frame.py
+# Purpose: Provide the login screen UI and authentication flow.
+# The frame renders a centered login box with username/password fields,
+# optional background, and navigation to registration. Added comments
+# explain layout regions and the login logic.
 
 class LoginFrame(ctk.CTkFrame):
     def __init__(self, parent, app):
@@ -13,6 +18,7 @@ class LoginFrame(ctk.CTkFrame):
         # =========================================================
         # BACKGROUND IMAGE
         # =========================================================
+        # Attempt to load a large background image; if missing, fall back to a plain background color.
         bg_path = "assets/bg_login.png"   # <-- change this to your file
         try:
             bg_img = Image.open(bg_path)
@@ -26,12 +32,13 @@ class LoginFrame(ctk.CTkFrame):
         # =========================================================
         # LOGIN BOX (center)
         # =========================================================
+        # A centered dark panel that contains inputs and the Enter button.
         login_box = ctk.CTkFrame(self, fg_color="#2B2B2B")
         login_box.place(relx=0.5, rely=0.5, anchor="center")
         login_box.configure(width=600, height=250)
         login_box.pack_propagate(False)
 
-        # Title
+        # Title text placed above the login box.
         label = ctk.CTkLabel(
         self,
         text="TattleStoolie",
@@ -42,17 +49,17 @@ class LoginFrame(ctk.CTkFrame):
         label.place(relx=0.5, rely=0.33, anchor="center")
         label.configure(width=500, height=75)
 
-        # Inner white panel for inputs
+        # Inner white panel for credentials
         inputs = ctk.CTkFrame(login_box, fg_color="#565656", corner_radius=1)
         inputs.pack(pady=15, padx=10)
         inputs.configure(width=565,height=165)
         inputs.pack_propagate(False)
 
-        # ICONS
+        # ICONS for username and password (assets required)
         user_icon_img = ctk.CTkImage(light_image=Image.open("assets/user_icon.png"), size=(25, 25))
         password_icon_img = ctk.CTkImage(light_image=Image.open("assets/password_icon.png"), size=(25, 25))
 
-        # Username box
+        # Username input row with icon
         box_user = ctk.CTkFrame(inputs, fg_color="#565656", corner_radius=1)
         box_user.pack(padx=10, pady=(25, 5), anchor="center")
         box_user.pack_propagate(False)
@@ -68,6 +75,7 @@ class LoginFrame(ctk.CTkFrame):
         )
         user_icon_label.place(relx=0.010, rely=0.5, anchor="w")
 
+        # Username entry widget
         self.username = ctk.CTkEntry(
             box_user,
             font=("Helvetica", 25),
@@ -81,7 +89,7 @@ class LoginFrame(ctk.CTkFrame):
         self.username.place(relx=0.10, rely=0.5, anchor="w")
 
 
-        # Password box
+        # Password input row with icon
         box_pass = ctk.CTkFrame(inputs, fg_color="#565656", corner_radius=1)
         box_pass.pack(padx=10, pady=(5, 25), anchor="center")
         box_pass.pack_propagate(False)
@@ -97,6 +105,7 @@ class LoginFrame(ctk.CTkFrame):
         )
         password_icon_label.place(relx=0.010, rely=0.5, anchor="w")
 
+        # Password entry widget
         self.password = ctk.CTkEntry(
             box_pass,
             font=("Helvetica", 25),
@@ -113,6 +122,7 @@ class LoginFrame(ctk.CTkFrame):
         shadow_offset_y = 8
 
         # --- Frame to contain prompt and button ---
+        # Positioned bottom-right of the login_box, prompts registration
         register_prompt_frame = ctk.CTkFrame(
             login_box,
             fg_color="transparent",  # doesn't show, just for layout
@@ -132,6 +142,7 @@ class LoginFrame(ctk.CTkFrame):
         prompt_label.pack(side="left", padx=(10, 5))
 
         # --- "Register now" clickable button ---
+        # Small navigation button leading to the registration frame
         register_btn = ctk.CTkButton(
             register_prompt_frame,
             text="Register now",
@@ -151,6 +162,7 @@ class LoginFrame(ctk.CTkFrame):
 
         shadow_offset_y = 8
 
+        # Subtle shadow frame beneath the main Enter button for visual depth
         ctk.CTkFrame(
             self,
             fg_color="#565656",
@@ -159,6 +171,7 @@ class LoginFrame(ctk.CTkFrame):
             corner_radius=1
         ).place(relx=0.5, rely=0.70, anchor="center", y=shadow_offset_y)
 
+        # Main Enter button that triggers authentication
         ctk.CTkButton(
             self,
             text="Enter",
@@ -177,6 +190,7 @@ class LoginFrame(ctk.CTkFrame):
     # LOGIN LOGIC
     # =============================================================
     def login(self):
+        # Authenticate using DB.get_user_by_credentials and create a role object.
         u = self.username.get().strip()
         p = self.password.get().strip()
 
@@ -189,7 +203,7 @@ class LoginFrame(ctk.CTkFrame):
             messagebox.showerror("Error", "Invalid username/password.")
             return
 
-        # Create user object
+        # Create a typed user object depending on role returned by DB
         role = row.get('role', 'reporter').lower()
         if role == 'admin':
             user = Admin(row)
@@ -198,9 +212,9 @@ class LoginFrame(ctk.CTkFrame):
         else:
             user = Reporter(row)
 
+        # Store current_user and navigate to appropriate landing page
         self.app.current_user = user
 
-        # Navigation
         if user.is_admin():
             self.app.show_frame("DashboardFrame")
         else:

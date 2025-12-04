@@ -1,6 +1,13 @@
 import customtkinter as ctk
 from PIL import Image, ImageTk
 
+# Module: dashboard_frame.py
+# Purpose: Present an overview dashboard for users.
+# This frame shows urgency buckets, a global list of incidents and provides
+# navigation via the left sidebar. It fetches incidents from the app's DB
+# and populates the urgency boxes and a simple global list.
+# Comments below explain the role of major methods and areas.
+
 URGENCY_ORDER = ["High", "Medium", "Low"]
 URGENCY_BG = {
     "High": "#1E1E1E",
@@ -11,16 +18,18 @@ URGENCY_BG = {
 
 class DashboardFrame(ctk.CTkFrame):
     def __init__(self, parent, app):
+        # Standard frame initialization and configuration.
         super().__init__(parent)
         self.app = app
         self.configure(fg_color="#BDBDBD")
 
-        # Sidebar
+        # ------------------ SIDEBAR (left) ------------------
+        # Reused sidebar: logo + navigation buttons; consistent across UI pages.
         self.sidebar = ctk.CTkFrame(self, fg_color="#2E2E2E", width=250, corner_radius=0)
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
 
-        # Logo (optional)
+        # Attempt to display a logo image, with fallback to simple text.
         try:
             main_logo = ctk.CTkImage(light_image=Image.open("assets/main_logo.png"), size=(60, 60))
             ctk.CTkLabel(self.sidebar, image=main_logo, text="",
@@ -29,9 +38,11 @@ class DashboardFrame(ctk.CTkFrame):
             ctk.CTkLabel(self.sidebar, text="TS", font=("Helvetica", 42, "bold"),
                          text_color="white").pack(pady=(25, 10))
 
+        # Sidebar title
         ctk.CTkLabel(self.sidebar, text="Dashboard",
                      font=("Helvetica", 28, "bold"), text_color="white").pack(pady=(0, 30))
 
+        # Navigation buttons: Home, Submit, Manage, Sign out (manage shown only for admins)
         self.home_btn = ctk.CTkButton(
             self.sidebar, text="Home", font=("Helvetica", 24, "bold"),
             fg_color="#E0E0E0", text_color="black",
@@ -46,7 +57,7 @@ class DashboardFrame(ctk.CTkFrame):
             fg_color="#E0E0E0", text_color="black",
             hover_color="#C9C9C9", corner_radius=0,
             width=180, height=45,
-            command=lambda: self.app.show_frame("AdminSubmitTipFrame")  # was AdminSubmitTipFrame (doesn't exist)
+            command=lambda: self.app.show_frame("AdminSubmitTipFrame")  # navigates to admin submit
         )
         self.submit_btn.pack(pady=10)
 
@@ -67,7 +78,8 @@ class DashboardFrame(ctk.CTkFrame):
         )
         self.signout_btn.pack(side="bottom", pady=20)
 
-        # Center panel
+        # ------------------ CENTER PANEL ------------------
+        # Main content area showing title and urgency boxes stacked vertically.
         self.center_panel = ctk.CTkFrame(self, fg_color="#D3D3D3", corner_radius=0)
         self.center_panel.pack(side="left", fill="both", expand=True, padx=20, pady=10)
 
@@ -75,23 +87,24 @@ class DashboardFrame(ctk.CTkFrame):
                      font=("HelveticaNeue Heavy", 70),
                      text_color="black").pack(pady=(15, 4))
 
+        # urgency_stack holds the three urgency boxes (High / Medium / Low)
         self.urgency_stack = ctk.CTkFrame(self.center_panel, fg_color="transparent")
-        self.urgency_stack.pack(pady=10, fill="x")  # (only width-related addition; stack itself is part of boxes context)
+        self.urgency_stack.pack(pady=10, fill="x")
 
         self.urgency_boxes = {}
         INNER_PADDING_X = 12
 
-        # ====== ONLY CHANGED THE THREE URGENCY BOXES TO OCCUPY FULL WIDTH ======
+        # Create one urgency box per urgency level. Each box contains a header and a scroll area.
         for urgency in URGENCY_ORDER:
-            # Wrapper now fills horizontally
+            # Wrapper allows the box to occupy full width within the center panel.
             wrapper = ctk.CTkFrame(self.urgency_stack, fg_color="transparent", width=1200)
-            wrapper.pack(pady=12)  
+            wrapper.pack(pady=12)
 
-            # Main frame stretches to full width
+            # Main colored frame for the urgency bucket
             main = ctk.CTkFrame(wrapper, fg_color=URGENCY_BG[urgency], corner_radius=10)
             main.pack(fill="x", expand=True)
 
-            # Header fills width
+            # Header area: title and count
             header = ctk.CTkFrame(main, fg_color="#2B2B2B", corner_radius=6)
             header.pack(padx=INNER_PADDING_X, pady=(8, 4))
 
@@ -103,17 +116,17 @@ class DashboardFrame(ctk.CTkFrame):
                                      font=("Helvetica", 15), text_color="#E0E0E0")
             count_lbl.pack(side="right", padx=10)
 
-            # Scrollable area also fills width
+            # Scrollable frame contains simple rows for incidents of this urgency.
             scroll = ctk.CTkScrollableFrame(main, fg_color="#3C3C3C", corner_radius=6, width=1150, height=120)
-            scroll.pack(padx=INNER_PADDING_X, pady=(0, 10))  # occupy full width
+            scroll.pack(padx=INNER_PADDING_X, pady=(0, 10))
 
             self.urgency_boxes[urgency] = {
                 "count": count_lbl,
                 "scroll": scroll
             }
-        # ====== END CHANGES TO URGENCY BOXES ONLY ======
 
-        # Right panel (global list)
+        # ------------------ RIGHT PANEL (global list) ------------------
+        # Shows a global list of incident names and types.
         self.right_panel = ctk.CTkFrame(self, fg_color="#C0C0C0", corner_radius=15, width=320)
         self.right_panel.pack(side="right", fill="y", padx=20, pady=20)
         self.right_panel.pack_propagate(False)
@@ -128,6 +141,7 @@ class DashboardFrame(ctk.CTkFrame):
         all_incidents.pack(pady=(20, 6))
         all_incidents.configure(width=300, height=50)
 
+        # A scrollable area that lists incidents in compact rows.
         self.global_scroll = ctk.CTkScrollableFrame(
             self.right_panel,
             fg_color="#858585",
@@ -141,6 +155,7 @@ class DashboardFrame(ctk.CTkFrame):
 
     # ---------- Lifecycle ----------
     def on_show(self):
+        # Called by the app when this frame is shown. Refreshes visibility and data.
         print("[Dashboard] on_show invoked")
         self._apply_role_visibility()
         self._load_urgency_boxes()
@@ -148,20 +163,24 @@ class DashboardFrame(ctk.CTkFrame):
 
     # ---------- Role visibility ----------
     def _apply_role_visibility(self):
+        # Show or hide admin-only controls depending on current_user role.
         user = getattr(self.app, "current_user", None)
         is_admin = bool(user and getattr(user, "is_admin", lambda: False)())
         manage_btn = getattr(self, "manage_btn", None)
         if not manage_btn:
             return
         if not is_admin:
+            # Remove manage button for non-admins.
             if manage_btn.winfo_manager():
                 manage_btn.pack_forget()
         else:
+            # Restore manage button for admins.
             if not manage_btn.winfo_manager():
                 manage_btn.pack(pady=10)
 
     # ---------- Data fetch ----------
     def _get_incidents(self):
+        # Fetch incidents via the DB API. Supports multiple DB method names for compatibility.
         db = getattr(self.app, "db", None)
         if not db:
             print("[Dashboard] No DB instance.")
@@ -179,6 +198,7 @@ class DashboardFrame(ctk.CTkFrame):
 
     # ---------- Urgency box loader ----------
     def _load_urgency_boxes(self):
+        # Populate each urgency bucket with incidents and update counts.
         incidents = self._get_incidents()
         buckets = {u: [] for u in URGENCY_ORDER}
         for inc in incidents:
@@ -188,6 +208,7 @@ class DashboardFrame(ctk.CTkFrame):
         for u in URGENCY_ORDER:
             box = self.urgency_boxes[u]
             scroll = box["scroll"]
+            # Some CTkScrollableFrame implementations provide scrollable_frame attr.
             scroll_parent = getattr(scroll, "scrollable_frame", scroll)
             for child in scroll_parent.winfo_children():
                 child.destroy()
@@ -195,6 +216,7 @@ class DashboardFrame(ctk.CTkFrame):
             box["count"].configure(text=f"({len(data)})")
             print(f"[Dashboard] Loading {u}: {len(data)} items")
             if not data:
+                # Show placeholder when no incidents present.
                 ctk.CTkLabel(scroll_parent, text="No incidents.",
                              font=("Helvetica", 14), text_color="#E0E0E0").pack(pady=6)
                 continue
@@ -202,6 +224,7 @@ class DashboardFrame(ctk.CTkFrame):
                 self._create_simple_name_row(scroll_parent, inc)
 
     def _create_simple_name_row(self, parent, inc):
+        # Render a compact row with the incident's tip name.
         try:
             tip_name = inc.get("tip_name", "Unknown")
             print(f"[Dashboard] Creating row for tip_name='{tip_name}'")
@@ -214,10 +237,12 @@ class DashboardFrame(ctk.CTkFrame):
             )
             text_tip.pack(side="left", padx=10, pady=6)
         except Exception as e:
+            # Defensive logging so a single bad row does not break the dashboard.
             print("[Dashboard] Row creation error:", e)
 
     # ---------- Global list ----------
     def _load_global_list(self):
+        # Populate the right-hand global list with all incidents sorted by name.
         container = self.global_rows_container
         for child in container.winfo_children():
             child.destroy()
@@ -239,5 +264,6 @@ class DashboardFrame(ctk.CTkFrame):
 
     # ---------- Logout ----------
     def logout(self):
+        # Clear session and navigate to login.
         self.app.current_user = None
         self.app.show_frame("LoginFrame")

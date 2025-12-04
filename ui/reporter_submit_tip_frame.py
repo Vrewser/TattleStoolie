@@ -2,6 +2,12 @@ import customtkinter as ctk
 from tkinter import messagebox
 from PIL import Image
 
+# Module: reporter_submit_tip_frame.py
+# Purpose: Provide the non-admin reporter submission form.
+# This frame closely mirrors the admin submit UI but is intended for non-admin reporters.
+# It provides fields for tip name, incident type, location, urgency and description,
+# along with Submit / Clear controls and an Exit button (kept unchanged).
+# Comments were added to clarify each major UI block and helper method.
 
 class SubmitTipFrame(ctk.CTkFrame):
     """
@@ -13,11 +19,11 @@ class SubmitTipFrame(ctk.CTkFrame):
         self.app = app
         self.configure(fg_color="#BEBEBE")
 
-        # Top bar
+        # Top bar containing logo and application title (consistent with other pages)
         top_bar = ctk.CTkFrame(self, fg_color="#2b2b2b", height=50, corner_radius=0)
         top_bar.pack(fill="x", side="top")
 
-        # Top Bar Logo and Title
+        # Top Bar Logo and Title - small image on right and textual title
         main_logo = ctk.CTkImage(light_image=Image.open("assets/main_logo.png"), size=(35, 35))
 
         main_logo = ctk.CTkLabel(
@@ -39,6 +45,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         logo.pack(side="right", padx=(35,0))
 
         # ------------------ TITLE (LEAVE ALONE) ------------------
+        # Main page title displayed below the top bar. Kept unchanged per request.
         ctk.CTkLabel(
             self,
             text="Enter Your Anonymous Tip Confidentially",
@@ -49,11 +56,12 @@ class SubmitTipFrame(ctk.CTkFrame):
         ).pack(pady=15)
 
         # ------------------ FORM ------------------
+        # Build and layout the form controls.
         self._build_form(self)
 
     # ------------------ UI BUILDERS ------------------
     def _build_form(self, parent):
-        # Outer white card matching the mock (fixed size to match layout)
+        # Outer white card area that contains the bordered inner panel.
         form_container = ctk.CTkFrame(
             parent,
             fg_color="#E8E8E8",
@@ -63,7 +71,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         form_container.pack(pady=25)
         form_container.pack_propagate(False)
 
-        # Inner bordered panel (blue border) + dark content area
+        # Bordered inner panel with blue border to match mock visuals.
         bordered = ctk.CTkFrame(
             form_container,
             fg_color="#565656",
@@ -75,16 +83,16 @@ class SubmitTipFrame(ctk.CTkFrame):
         bordered.pack(padx=24, pady=(24, 12))
         bordered.pack_propagate(False)
 
+        # Dark inner surface where inputs are placed using a two-column grid.
         inner = ctk.CTkFrame(bordered, fg_color="#4F4F4F", corner_radius=0)
         inner.pack(fill="both", expand=True, padx=18, pady=18)
 
-        # Two columns inside the dark panel
+        # Configure grid columns for layout balance
         inner.grid_columnconfigure(0, weight=1)
         inner.grid_columnconfigure(1, weight=1)
 
         # ------------------------------------------------------------------
         # Top row: Tip Name (left) + Incident Type (right)
-        # Light gray boxes with placeholder text to match the mock
         # ------------------------------------------------------------------
         name_box = ctk.CTkEntry(
             inner,
@@ -128,7 +136,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         location_box.grid(row=1, column=0, padx=(10, 10), pady=(10, 10), sticky="we")
         self.location = location_box
 
-        # Urgency panel (light box with label + three radio options)
+        # Urgency panel: contains label and three radio buttons.
         urgency_panel = ctk.CTkFrame(inner, fg_color="#D9D9D9", corner_radius=0)
         urgency_panel.grid(row=1, column=1, padx=(10, 10), pady=(10, 10), sticky="we")
         urgency_panel.grid_columnconfigure((0, 1, 2, 3), weight=1)
@@ -136,6 +144,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         ctk.CTkLabel(urgency_panel, text="URGENCY", font=("HelveticaNeue Heavy", 25), text_color="black",
                      fg_color="transparent").grid(row=0, column=0, columnspan=4, pady=(6, 2))
 
+        # Radio group state variable initialized to Medium by default
         self.urgency_var = ctk.StringVar(value="Medium")
         low_rb = ctk.CTkRadioButton(urgency_panel, text="Low", value="Low", variable=self.urgency_var,
                                     fg_color="#3B8ED0", hover_color="#2476B9", font=("Helvetica", 15), text_color="black")
@@ -155,18 +164,21 @@ class SubmitTipFrame(ctk.CTkFrame):
         desc_container.grid(row=2, column=0, columnspan=2, padx=(10, 10), pady=(10, 6), sticky="nsew")
         inner.grid_rowconfigure(2, weight=1)
 
+        # Label above the description area
         ctk.CTkLabel(
             desc_container, text="Describe your tip here", font=("Inter", 20, "italic"),
             text_color="black", fg_color="transparent"
         ).pack(anchor="w", padx=10, pady=(8, 2))
 
+        # Description textbox with visual styling and configured dimensions
         self.description = ctk.CTkTextbox(desc_container, width=980, height=220, fg_color="#EFEFEF", text_color="black", font=("Helvetica", 15))
         self.description.pack(padx=10, pady=(0, 6), fill="both", expand=True)
 
-        # Character counter bottom-right (0/500)
+        # Character counter to enforce max length and help users
         self._desc_count = ctk.CTkLabel(desc_container, text="0/500", text_color="black", fg_color="#EFEFEF")
         self._desc_count.place(relx=0.99, rely=1.0, anchor="se", x=-10, y=-6)
 
+        # Internal helper updates the counter and trims excess characters
         def _update_desc_count(event=None):
             txt = self.description.get("1.0", "end-1c")
             if len(txt) > 500:
@@ -175,12 +187,13 @@ class SubmitTipFrame(ctk.CTkFrame):
                 txt = self.description.get("1.0", "end-1c")
             self._desc_count.configure(text=f"{len(txt)}/500")
 
+        # Bind updater to relevant events
         self.description.bind("<KeyRelease>", _update_desc_count)
         self.description.bind("<FocusIn>", _update_desc_count)
         _update_desc_count()
 
         # ------------------ Submit/Clear buttons (centered at bottom of white card) ------------------
-        # Dedicated bottom area so shadows never get clipped
+        # Provide a dedicated bottom area so shadows are not clipped by container bounds
         button_bar = ctk.CTkFrame(form_container, fg_color="transparent", height=96)
         button_bar.pack(side="bottom", fill="x", pady=(4, 10))
         button_bar.pack_propagate(False)
@@ -188,7 +201,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         center_buttons = ctk.CTkFrame(button_bar, fg_color="transparent")
         center_buttons.pack(side="top")
 
-        # Submit (with shallow drop shadow)
+        # Submit button + shadow: centered within its wrapper to create a raised effect
         submit_wrap = ctk.CTkFrame(center_buttons, fg_color="transparent", width=220, height=60)
         submit_wrap.pack(side="left", padx=25)
         submit_wrap.pack_propagate(False)
@@ -209,7 +222,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         )
         submit_btn.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Clear (with shallow drop shadow)
+        # Clear button + shadow to the right of Submit
         clear_wrap = ctk.CTkFrame(center_buttons, fg_color="transparent", width=220, height=60)
         clear_wrap.pack(side="left", padx=25)
         clear_wrap.pack_propagate(False)
@@ -231,6 +244,8 @@ class SubmitTipFrame(ctk.CTkFrame):
         clear_btn.place(relx=0.5, rely=0.5, anchor="center")
 
         # ------------------ EXIT ------------------
+        # Exit button and its shadow are placed on the main frame (outside form_container)
+        # per design to ensure it sits at the bottom-right of the application window.
         shadow_exit = ctk.CTkLabel(
             self,
             width=200,
@@ -256,6 +271,7 @@ class SubmitTipFrame(ctk.CTkFrame):
 
     # ------------------ HELPERS ------------------
     def _collect_payload(self):
+        # Package the current form values into a dictionary for saving.
         desc = self.description.get("1.0", "end-1c").strip()
         payload = {
             "tip_name": self.tip_name.get().strip(),
@@ -271,6 +287,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         return payload
 
     def _validate(self, payload):
+        # Validate required fields and show error dialogs when validation fails.
         if not payload["tip_name"]:
             messagebox.showerror("Error", "Tip Name is required.")
             return False
@@ -289,6 +306,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         return True
 
     def _save_tip(self, payload):
+        # Attempt multiple common DB method names to save a tip, returning a standardized result.
         db = getattr(self.app, "db", None)
         if not db:
             return False, None
@@ -308,6 +326,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         return False, None
 
     def _clear(self):
+        # Reset form inputs to blank/default states and update counter if present.
         self.tip_name.delete(0, "end")
         self.incident_type.delete(0, "end")
         self.location.delete(0, "end")
@@ -319,7 +338,7 @@ class SubmitTipFrame(ctk.CTkFrame):
 
     # ------------------ ACTIONS ------------------
     def _exit(self):
-        # LEAVE ALONE (unchanged behavior)
+        # Exit action: prefer app-provided frame switch, fallback to clearing form and showing info.
         if hasattr(self.app, "show_frame"):
             try:
                 self.app.show_frame("ReporterExitFrame")
@@ -330,6 +349,7 @@ class SubmitTipFrame(ctk.CTkFrame):
         messagebox.showinfo("Info", "You can close the window.")
 
     def submit_tip(self):
+        # High-level submit workflow: collect -> validate -> save -> notify user
         payload = self._collect_payload()
         if not self._validate(payload):
             return

@@ -3,6 +3,11 @@ from tkinter import messagebox
 from typing import Optional, Dict, Any
 from PIL import Image
 
+# Module: edit_tip_frame.py
+# Purpose: Provide an editable form for an existing tip.
+# EditTipFrame loads a tip (by row or id), populates the form, allows edits,
+# and exposes Save / Resolve / Back actions. Comments explain each UI block
+# and the backend helper functions used for update/delete.
 
 class EditTipFrame(ctk.CTkFrame):
     """Edit tip screen: loads row, allows manual edits, only saves on button click."""
@@ -13,7 +18,7 @@ class EditTipFrame(ctk.CTkFrame):
         super().__init__(parent)
         self.app = app
 
-        # Resolve tip row: prefer tip_id, else tip_row, else empty
+        # Resolve tip row: prefer tip_id (fresh read), then provided tip_row
         self.tip_row = {}
         rid = tip_id or (tip_row.get("id") if tip_row else None)
         if rid:
@@ -29,11 +34,12 @@ class EditTipFrame(ctk.CTkFrame):
             self.tip_row = tip_row or {}
 
         # ------------------ SIDEBAR ------------------
+        # Sidebar navigation consistent with other frames.
         self.sidebar = ctk.CTkFrame(self, fg_color="#2E2E2E", width=250, corner_radius=0)
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
 
-        # Keep logo exactly
+        # Logo (image or fallback text)
         try:
             main_logo = ctk.CTkImage(light_image=Image.open("assets/main_logo.png"), size=(60, 60))
             ctk.CTkLabel(self.sidebar, image=main_logo, text="",
@@ -45,6 +51,7 @@ class EditTipFrame(ctk.CTkFrame):
         ctk.CTkLabel(self.sidebar, text="Dashboard",
                      font=("Helvetica", 28, "bold"), text_color="white").pack(pady=(0, 30))
 
+        # Sidebar navigation buttons
         self.home_btn = ctk.CTkButton(
             self.sidebar, text="Home", font=("Helvetica", 24, "bold"),
             fg_color="#E0E0E0", text_color="black",
@@ -81,6 +88,7 @@ class EditTipFrame(ctk.CTkFrame):
         self.signout_btn.pack(side="bottom", pady=20)
 
         # ------------------ MAIN CONTENT ------------------
+        # Main area shows the same page header and the editable form.
         main = ctk.CTkFrame(self, fg_color="#BEBEBE")
         main.pack(side="left", expand=True, fill="both")
 
@@ -99,11 +107,12 @@ class EditTipFrame(ctk.CTkFrame):
             text_color="#3E3E3E"
         ).pack(pady=10)
 
-        # ------------------ FORM ------------------
+        # Build the edit form UI
         self._build_form(main)
 
     # ------------------ UI BUILDERS ------------------
     def _build_form(self, parent):
+        # form_container: outer white card for the editable form (keeps consistent visuals)
         form_container = ctk.CTkFrame(
             parent,
             fg_color="#E8E8E8",
@@ -112,6 +121,7 @@ class EditTipFrame(ctk.CTkFrame):
         )
         form_container.pack(pady=0)
 
+        # bordered: inner dark panel with border where form elements are placed
         bordered = ctk.CTkFrame(
             form_container,
             fg_color="#565656",
@@ -123,14 +133,14 @@ class EditTipFrame(ctk.CTkFrame):
         bordered.pack(padx=24, pady=(24, 12))
         bordered.pack_propagate(False)
 
+        # inner surface for inputs (two-column grid)
         inner = ctk.CTkFrame(bordered, fg_color="#4F4F4F", corner_radius=0)
         inner.pack(fill="both", expand=True, padx=18, pady=18)
 
-        # Two columns inside the dark panel
         inner.grid_columnconfigure(0, weight=1)
         inner.grid_columnconfigure(1, weight=1)
 
-        # Top row: Tip Name + Incident Type
+        # Top row: Tip Name + Incident Type (pre-populated from self.tip_row)
         self.tip_name = ctk.CTkEntry(
             inner,
             width=480, height=44,
@@ -142,6 +152,7 @@ class EditTipFrame(ctk.CTkFrame):
             placeholder_text="Enter Tip Name"
         )
         self.tip_name.grid(row=0, column=0, padx=(10, 10), pady=(10, 10), sticky="we")
+        # Populate initial value from the loaded tip row
         self.tip_name.insert(0, self.tip_row.get("tip_name", ""))
 
         self.incident_type = ctk.CTkEntry(
@@ -157,7 +168,7 @@ class EditTipFrame(ctk.CTkFrame):
         self.incident_type.grid(row=0, column=1, padx=(10, 10), pady=(10, 10), sticky="we")
         self.incident_type.insert(0, self.tip_row.get("incident_type", ""))
 
-        # Second row: Location + Urgency (radiobutton group)
+        # Second row: Location + Urgency (radio group with initial selection)
         self.location = ctk.CTkEntry(
             inner,
             width=480, height=44,
@@ -178,6 +189,7 @@ class EditTipFrame(ctk.CTkFrame):
         ctk.CTkLabel(urgency_panel, text="URGENCY", font=("HelveticaNeue Heavy", 25), text_color="black",
                      fg_color="transparent").grid(row=0, column=0, columnspan=4, pady=(6, 2))
 
+        # Initialize radio group from the loaded tip's urgency, defaulting to Medium
         self.urgency_var = ctk.StringVar(value=(self.tip_row.get("urgency") or "Medium").title())
         ctk.CTkRadioButton(urgency_panel, text="Low", value="Low", variable=self.urgency_var,
                            fg_color="#3B8ED0", hover_color="#2476B9", font=("Helvetica", 15), text_color="black").grid(row=1, column=0, padx=(100, 8), pady=(4, 10), sticky="w")
@@ -186,7 +198,7 @@ class EditTipFrame(ctk.CTkFrame):
         ctk.CTkRadioButton(urgency_panel, text="High", value="High", variable=self.urgency_var,
                            fg_color="#3B8ED0", hover_color="#2476B9", font=("Helvetica", 15), text_color="black").grid(row=1, column=2, padx=(8, 50), pady=(4, 10), sticky="w")
 
-        # Third row: Description with counter
+        # Third row: Description with counter, pre-populated from tip_row
         desc_container = ctk.CTkFrame(inner, fg_color="#D9D9D9", corner_radius=0)
         desc_container.grid(row=2, column=0, columnspan=2, padx=(10, 10), pady=(10, 6), sticky="nsew")
         inner.grid_rowconfigure(2, weight=1)
@@ -196,10 +208,12 @@ class EditTipFrame(ctk.CTkFrame):
             text_color="black", fg_color="transparent"
         ).pack(anchor="w", padx=10, pady=(8, 2))
 
+        # Description textbox: insert existing description into the widget
         self.description = ctk.CTkTextbox(desc_container, width=980, height=220, fg_color="#EFEFEF", text_color="black", font=("Helvetica", 15))
         self.description.pack(padx=10, pady=(0, 6), fill="both", expand=True)
         self.description.insert("1.0", self.tip_row.get("description", ""))
 
+        # Character counter to help enforce limits
         self._desc_count = ctk.CTkLabel(desc_container, text="0/500", text_color="black", fg_color="#EFEFEF")
         self._desc_count.place(relx=0.99, rely=1.0, anchor="se", x=-10, y=-6)
 
@@ -214,7 +228,8 @@ class EditTipFrame(ctk.CTkFrame):
         self.description.bind("<FocusIn>", _update_desc_count)
         _update_desc_count()
 
-        # Bottom buttons styled like Submit/Clear, but wired to save/reset
+        # ------------------ Bottom action buttons ------------------
+        # Save / Resolve & Delete / Back. Styled similarly to submit screen buttons.
         button_bar = ctk.CTkFrame(form_container, fg_color="transparent", height=96)
         button_bar.pack(side="bottom", fill="x", pady=(4, 10))
         button_bar.pack_propagate(False)
@@ -222,7 +237,7 @@ class EditTipFrame(ctk.CTkFrame):
         center_buttons = ctk.CTkFrame(button_bar, fg_color="transparent")
         center_buttons.pack(side="top")
 
-        # Save Changes
+        # Save Changes button with shadow
         save_wrap = ctk.CTkFrame(center_buttons, fg_color="transparent", width=220, height=60)
         save_wrap.pack(side="left", padx=25)
         save_wrap.pack_propagate(False)
@@ -239,11 +254,11 @@ class EditTipFrame(ctk.CTkFrame):
             font=("HelveticaNeue Heavy", 28),
             width=200, height=50,
             corner_radius=0,
-            command=self.save_tip  # FIX: was self.submit_tip (missing)
+            command=self.save_tip  # wired to save the edited tip
         )
         save_btn.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Resolve & Delete
+        # Resolve & Delete action (prominent red button)
         resolve_wrap = ctk.CTkFrame(center_buttons, fg_color="transparent", width=220, height=60)
         resolve_wrap.pack(side="left", padx=25)
         resolve_wrap.pack_propagate(False)
@@ -264,7 +279,7 @@ class EditTipFrame(ctk.CTkFrame):
         )
         resolve_btn.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Back
+        # Back button to return to previous frame
         back_wrap = ctk.CTkFrame(center_buttons, fg_color="transparent", width=220, height=60)
         back_wrap.pack(side="left", padx=25)
         back_wrap.pack_propagate(False)
@@ -287,6 +302,7 @@ class EditTipFrame(ctk.CTkFrame):
 
     # ================= BACKEND FUNCTIONS =================
     def _resolve_and_delete(self):
+        # Resolve (mark resolved) then delete the tip record. Uses DB API methods.
         tip_id = self.tip_row.get("id")
         if not tip_id:
             messagebox.showerror("Error", "No tip selected.")
@@ -316,36 +332,39 @@ class EditTipFrame(ctk.CTkFrame):
             messagebox.showwarning("Not deleted", "Tip could not be deleted.")
 
     def _back(self):
+        # Navigate back using the app's history; fallback to manage list.
         try:
             self.app.go_back()
         except Exception:
-            # Fallback to manage list if history is empty
             try:
                 self.app.show_frame("ManageTipsFrame")
             except Exception:
                 pass
 
     def _limit_description(self, event=None):
+        # Enforce the maximum description length on-the-fly.
         txt = self.description.get("1.0", "end-1c")
         if len(txt) > self.MAX_DESC_LEN:
             self.description.delete("1.0", "end")
             self.description.insert("1.0", txt[:self.MAX_DESC_LEN])
 
     def _collect_updates(self) -> Dict[str, Any]:
-        # Collect current field values
+        # Gather values from input widgets into an updates dict for DB update.
         updates = {
             "tip_name": self.tip_name.get().strip(),
             "incident_type": self.incident_type.get().strip(),
             "location": self.location.get().strip(),
-            "urgency": self.urgency_var.get().strip(),  # FIX: use radiobutton variable
+            "urgency": self.urgency_var.get().strip(),  # use radiobutton value
             "description": self.description.get("1.0", "end-1c").strip(),
         }
+        # Trim description if needed
         if len(updates["description"]) > self.MAX_DESC_LEN:
             updates["description"] = updates["description"][:self.MAX_DESC_LEN]
         return updates
 
     def _clear(self):
         """Reset fields to the originally loaded values (not blank)."""
+        # Restore initial values from self.tip_row
         self.tip_name.delete(0, "end")
         self.tip_name.insert(0, self.tip_row.get("tip_name", ""))
 
@@ -366,6 +385,7 @@ class EditTipFrame(ctk.CTkFrame):
             self._desc_count.configure(text=f"{len(desc)}/500")
 
     def save_tip(self):
+        # Validate required fields and call DB.update_tip to persist changes.
         tip_id = self.tip_row.get("id")
         if not tip_id:
             messagebox.showerror("Error", "No tip selected to edit.")
@@ -394,6 +414,7 @@ class EditTipFrame(ctk.CTkFrame):
             messagebox.showwarning("No changes", "Nothing was updated.")
 
     def mark_resolved(self):
+        # Prompt and mark as Resolved via DB.update_tip
         tip_id = self.tip_row.get("id")
         if not tip_id:
             messagebox.showerror("Error", "No tip selected to update.")
@@ -409,5 +430,6 @@ class EditTipFrame(ctk.CTkFrame):
             messagebox.showinfo("Status Updated", "Marked as Resolved.")
 
     def logout(self):
+        # Clear session and return to login screen
         self.app.current_user = None
         self.app.show_frame("LoginFrame")
