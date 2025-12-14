@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any, List
 
 
 class Database:
-    """MySQL Database connection and CRUD. Ensures minimal schema on connect."""
+    """MySQL Database connection and CRUD operations with automatic schema management."""
 
     def __init__(self, config: dict):
         self.config = config.copy()
@@ -21,6 +21,7 @@ class Database:
         self._ensure_schema()
 
     def _ensure_schema(self):
+        """Create tables if missing and apply schema migrations."""
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -48,28 +49,47 @@ class Database:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """
         )
-        # Migration check
-        self.cursor.execute("""
-            SELECT DATA_TYPE 
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'tips' AND COLUMN_NAME = 'description'
-        """, (self.config.get("database", "TattleStoolie_DB"),))
-        row = self.cursor.fetchone()
-        if row and row["DATA_TYPE"].lower() == "text":
-            self.cursor.execute("SELECT MAX(CHAR_LENGTH(description)) AS maxlen FROM tips")
-            maxlen = self.cursor.fetchone()["maxlen"] or 0
-            if maxlen <= 500:
-                print("Altering tips.description from TEXT to VARCHAR(500)")
-                self.cursor.execute("ALTER TABLE tips MODIFY description VARCHAR(500)")
+        # Migrate legacy schema if needed
+        try:
+            self.cursor.execute(
+                """
+                SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA=%s AND TABLE_NAME='tips' AND COLUMN_NAME IN ('id','tips_ID')
+                """,
+                (self.config.get("database", "TattleStoolie_DB"),),
+            )
+            cols = {row["COLUMN_NAME"] for row in self.cursor.fetchall()}
+        except Exception:
+            cols = set()
+        
+        # Migrate tips.description from TEXT to VARCHAR(500) if needed
+        try:
+            self.cursor.execute(
+                """
+                SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA=%s AND TABLE_NAME='tips' AND COLUMN_NAME='description'
+                """,
+                (self.config.get("database", "TattleStoolie_DB"),),
+            )
+            row = self.cursor.fetchone()
+            if row and row["DATA_TYPE"].lower() == "text":
+                self.cursor.execute("SELECT MAX(CHAR_LENGTH(description)) AS maxlen FROM tips")
+                maxlen = self.cursor.fetchone()["maxlen"] or 0
+                if maxlen <= 500:
+                    self.cursor.execute("ALTER TABLE tips MODIFY description VARCHAR(500)")
+        except Exception:
+            pass
+        
         if not self.autocommit:
             self.conn.commit()
 
     @staticmethod
     def hash_password(password: str) -> str:
+        """SHA-256 hash a password string."""
         return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
-    # ---------- USER CRUD ----------
     def create_user(self, username: str, email: str, password: str, role: str = "reporter") -> bool:
+        """Create a new user. Returns True on success, False if username already exists."""
         sql = "INSERT INTO users (username, email, password_hash, role) VALUES (%s,%s,%s,%s)"
         try:
             self.cursor.execute(sql, (username, email, self.hash_password(password), role))
@@ -82,11 +102,13 @@ class Database:
             return False
 
     def get_user_by_credentials(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+        """Retrieve user by username and password (hashed). Returns None if not found."""
         sql = "SELECT * FROM users WHERE username=%s AND password_hash=%s"
         self.cursor.execute(sql, (username, self.hash_password(password)))
         return self.cursor.fetchone()
 
     def seed_admin(self, username: str, password: str, email: str = "admin@example.com"):
+        """Create or update an admin user."""
         hashed = self.hash_password(password)
         try:
             self.cursor.execute(
@@ -101,8 +123,8 @@ class Database:
         if not self.autocommit:
             self.conn.commit()
 
-    # ---------- TIP CRUD ----------
     def create_tip(self, fields: dict) -> int:
+        """Create a new tip. Returns the inserted id."""
         sql = """INSERT INTO tips (tip_name, incident_type, location, description, urgency, created_by)
                  VALUES (%s,%s,%s,%s,%s,%s)"""
         self.cursor.execute(sql, (
@@ -114,6 +136,7 @@ class Database:
         return self.cursor.lastrowid
 
     def read_tips(self, filters: dict = None) -> List[Dict[str, Any]]:
+        """Retrieve all tips, optionally filtered by column values."""
         q = "SELECT * FROM tips"
         params = []
         if filters:
@@ -127,11 +150,13 @@ class Database:
         return self.cursor.fetchall()
 
     def read_tip(self, tip_id: int) -> Optional[Dict[str, Any]]:
+        """Retrieve a single tip by id."""
         sql = "SELECT * FROM tips WHERE id=%s"
         self.cursor.execute(sql, (tip_id,))
         return self.cursor.fetchone()
 
     def update_tip(self, tip_id: int, updates: dict) -> bool:
+        """Update tip fields. Returns True if a row was modified."""
         if not updates:
             return False
         assignments = []
@@ -147,25 +172,27 @@ class Database:
         return self.cursor.rowcount > 0
 
     def delete_tip(self, tip_id: int) -> bool:
+        """Delete a tip by id. Returns True if deleted."""
         sql = "DELETE FROM tips WHERE id=%s"
         self.cursor.execute(sql, (tip_id,))
         if not self.autocommit:
             self.conn.commit()
         return self.cursor.rowcount > 0
 
-    # ---------- New helper aliases for Dashboard ----------
     def get_all_incidents(self) -> List[Dict[str, Any]]:
+        """Retrieve all tips (alias for read_tips)."""
         return self.read_tips()
 
     def get_incidents_by_urgency(self, urgency: str) -> List[Dict[str, Any]]:
+        """Retrieve tips filtered by urgency level."""
         return self.read_tips({"urgency": urgency})
 
-    # ---------- Rules placeholder ----------
     def get_incident_rules(self):
+        """Return tip validation rules."""
         return {"min_description_length": 20}
 
-    # ---------- Close ----------
     def close(self):
+        """Close database connection."""
         try:
             self.cursor.close()
             self.conn.close()

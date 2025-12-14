@@ -1,6 +1,6 @@
 import os
 
-# Database settings read from environment variables for easy configuration
+# Database configuration (supports env var overrides)
 DB = {
     "host": os.getenv("DB_HOST", "localhost"),
     "user": os.getenv("DB_USER", "root"),

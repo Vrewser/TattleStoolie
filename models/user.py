@@ -1,4 +1,6 @@
 class User:
+    """Represents a user with role-based properties."""
+    
     def __init__(self, row):
         self._id = row["id"]
         self._username = row["username"]
@@ -26,13 +28,7 @@ class User:
         return self._role == "viewer"
 
 
-class Admin(User):
-    pass
-
-
-class Reporter(User):
-    pass
-
-
-class Viewer(User):
-    pass
+# Type aliases for role-specific users
+Admin = User
+Reporter = User
+Viewer = User
