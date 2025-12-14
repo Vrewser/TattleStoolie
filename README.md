@@ -141,8 +141,7 @@ TattleStoolie/
 ├── README.md                      # This file
 ├── database/
 │   ├── db.py                      # Database connection and CRUD operations
-│   ├── debug_db.py                # MySQL connection debugging tool
-│   └── add_admin_fallback.py      # Utility for fallback admin seeding
+│   └── debug_db.py                # MySQL connection debugging tool
 ├── models/
 │   ├── user.py                    # User class and role definitions
 │   ├── abstract_incident.py       # Base incident model
