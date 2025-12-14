@@ -2,15 +2,6 @@ import customtkinter as ctk
 from tkinter import messagebox
 from PIL import Image
 
-# Module: admin_submit_tip_frame.py
-# Purpose: Provide the admin-facing tip submission UI.
-# This module defines AdminSubmitTipFrame, a CTkFrame subclass that:
-# - Renders a left navigation sidebar (logo, Home, Submit, Manage, Sign out)
-# - Renders the main content area with a page header and a submission form
-# - The form contains fields for tip name, incident type, location, urgency and description
-# - Includes Submit and Clear actions which validate and call the application's DB API
-# Note: Only comments were added to document structure and intent. No code behavior was changed.
-
 
 class AdminSubmitTipFrame(ctk.CTkFrame):
     """
