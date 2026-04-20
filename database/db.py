@@ -22,17 +22,25 @@ class Database:
 
     def _ensure_schema(self):
         """Create tables if missing and apply schema migrations."""
+        # Create users table with audit fields
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,
-                email VARCHAR(255),
+                email VARCHAR(255) UNIQUE,
                 password_hash CHAR(64) NOT NULL,
-                role VARCHAR(50) NOT NULL DEFAULT 'reporter'
+                role VARCHAR(50) NOT NULL DEFAULT 'reporter' CHECK (role IN ('admin', 'reporter', 'viewer')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                INDEX idx_role (role),
+                INDEX idx_created_at (created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """
         )
+        
+        # Create tips table with audit trail
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS tips (
@@ -42,13 +50,40 @@ class Database:
                 location VARCHAR(255),
                 description VARCHAR(500),
                 urgency VARCHAR(50),
-                created_by INT,
+                created_by INT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 status VARCHAR(50) DEFAULT 'Pending',
-                FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+                reviewed_by INT NULL,
+                reviewed_at TIMESTAMP NULL,
+                FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL,
+                INDEX idx_status (status),
+                INDEX idx_created_by (created_by),
+                INDEX idx_created_at (created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """
         )
+        
+        # Create audit log table for security tracking
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                action VARCHAR(255) NOT NULL,
+                resource_type VARCHAR(50),
+                resource_id INT,
+                details JSON,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+                INDEX idx_user_id (user_id),
+                INDEX idx_timestamp (timestamp),
+                INDEX idx_action (action)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """
+        )
+        
         # Migrate legacy schema if needed
         try:
             self.cursor.execute(
@@ -198,3 +233,32 @@ class Database:
             self.conn.close()
         except Exception:
             pass
+
+    def log_audit(self, user_id: int, action: str, resource_type: str = None, 
+                  resource_id: int = None, details: dict = None) -> None:
+        """Log an audit trail entry for security tracking."""
+        try:
+            import json
+            details_json = json.dumps(details) if details else None
+            sql = """INSERT INTO audit_log (user_id, action, resource_type, resource_id, details)
+                     VALUES (%s, %s, %s, %s, %s)"""
+            self.cursor.execute(sql, (user_id, action, resource_type, resource_id, details_json))
+            if not self.autocommit:
+                self.conn.commit()
+        except Exception as e:
+            print(f"Audit logging failed: {e}")
+
+    def get_audit_logs(self, filters: dict = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """Retrieve audit logs, optionally filtered."""
+        q = "SELECT * FROM audit_log"
+        params = []
+        if filters:
+            clauses = []
+            for k, v in filters.items():
+                clauses.append(f"{k}=%s")
+                params.append(v)
+            q += " WHERE " + " AND ".join(clauses)
+        q += " ORDER BY timestamp DESC LIMIT %s"
+        params.append(limit)
+        self.cursor.execute(q, tuple(params))
+        return self.cursor.fetchall()

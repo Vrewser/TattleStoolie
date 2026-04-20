@@ -13,7 +13,8 @@ if REPO_ROOT not in sys.path:
 from config import DB as DB_CONFIG
 from database.db import Database
 from models.incident_factory import IncidentFactory
-from ui.app import TattleApp
+from ui.admin_app import AdminApp
+from ui.reporter_app import ReporterApp
 
 
 def main():
@@ -45,10 +46,23 @@ def main():
                 print("Failed to seed admin user:", ex)
                 traceback.print_exc()
 
+    # Determine which app to launch
+    # Default: "reporter" | Can be set via --admin flag or APP_MODE env var
+    app_mode = os.getenv("APP_MODE", "reporter").lower()
+    if len(sys.argv) > 1 and sys.argv[1].lower() in ("--admin", "-a"):
+        app_mode = "admin"
+    
     # Start application
     try:
         incident_factory = IncidentFactory()
-        app = TattleApp(db=db, incident_factory=incident_factory)
+        
+        if app_mode == "admin":
+            print("Launching Admin Portal...")
+            app = AdminApp(db=db, incident_factory=incident_factory)
+        else:
+            print("Launching Reporter Portal...")
+            app = ReporterApp(db=db, incident_factory=incident_factory)
+        
         app.mainloop()
     except KeyboardInterrupt:
         print("\nApplication interrupted by user.")
